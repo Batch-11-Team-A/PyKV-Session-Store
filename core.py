@@ -1,6 +1,4 @@
 """
-engine.py
-
 Core session engine for PyKV.
 
 This module manages user login sessions for a web application.
