@@ -77,7 +77,7 @@ def get_session(session_token):
        #check whether the session has expired
         if session["expires_at"] and time.time() > session["expires_at"]:
             del active_sessions[session_token]
-                # SAVE AFTER AUTO-DELETE
+            # SAVE AFTER AUTO-DELETE
             persistence.save_to_disk(export_sessions())
             return None
 
@@ -94,7 +94,7 @@ def delete_session(session_token):
         if session_token in active_sessions:
             del active_sessions[session_token]
             # SAVE TO DISK
-            persistence.save_to_disk(export_sessions()
+            persistence.save_to_disk(export_sessions())
                                      
 # Persistence support
 def export_sessions():
