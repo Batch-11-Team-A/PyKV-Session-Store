@@ -15,6 +15,7 @@ Key responsibilities:
 
 import threading
 import time
+from persistence import PersistenceManager
 
 # In-memory session storage
 # Each session token maps to user-related data.
@@ -25,6 +26,16 @@ active_sessions = {}
 
 # Lock to ensure only one thread modifies session data at a time
 session_lock = threading.Lock()
+
+# Persistence manager
+persistence = PersistenceManager()
+
+# Load saved sessions on startup
+saved_data = persistence.load_from_disk()
+
+if saved_data:
+    active_sessions.update(saved_data)
+    print("[Engine] Sessions restored from disk.")
 
 # Create / Update session
 def create_session(session_token, user_data, ttl=None):
@@ -44,7 +55,10 @@ def create_session(session_token, user_data, ttl=None):
             "created_at": current_time,
             "expires_at": expiry_time
         }
-
+        
+        # SAVE TO DISK
+        persistence.save_to_disk(export_sessions())
+        
 # Fetch session
 def get_session(session_token):
     """
@@ -63,6 +77,8 @@ def get_session(session_token):
        #check whether the session has expired
         if session["expires_at"] and time.time() > session["expires_at"]:
             del active_sessions[session_token]
+                # SAVE AFTER AUTO-DELETE
+            persistence.save_to_disk(export_sessions())
             return None
 
         return session["user_data"]
@@ -77,7 +93,9 @@ def delete_session(session_token):
     with session_lock:
         if session_token in active_sessions:
             del active_sessions[session_token]
-
+            # SAVE TO DISK
+            persistence.save_to_disk(export_sessions()
+                                     
 # Persistence support
 def export_sessions():
     """
