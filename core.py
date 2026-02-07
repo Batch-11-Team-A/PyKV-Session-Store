@@ -102,8 +102,8 @@ def export_sessions():
     Provide a snapshot of all active sessions.
     Used by persistence layer to save data to disk.
     """
-    with session_lock:
-        return active_sessions.copy()
+    return active_sessions.copy()
+
 
 
 def import_sessions(saved_sessions):
