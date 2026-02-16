@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Heartbeat PVKV Dashboard v9</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;transition: all 0.3s ease;}
+body{
+background:#111;
+background: linear-gradient(-45deg,#111,#222,#333,#000);
+background-size: 400% 400%;
+animation: bgAnimation 25s ease infinite;
+color:white;
+padding:40px;
+min-height:100vh;
+overflow-x:hidden;
+position:relative;
+}
+@keyframes bgAnimation{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+
+.glass{background: rgba(255,255,255,0.05);backdrop-filter: blur(25px);padding:30px;border-radius:25px;box-shadow:0 0 30px #00fff5,0 0 40px #ff00c8 inset;margin-top:30px;animation: fadeIn 1s ease;position:relative;}
+.glass:hover{transform: scale(1.02);box-shadow:0 0 50px #00fff5,0 0 60px #ff00c8 inset;}
+@keyframes fadeIn{from{opacity:0; transform:translateY(30px);}to{opacity:1; transform:translateY(0);}}
+
+/* Stats Strip */
+.stats-strip{
+display:flex;
+justify-content:space-around;
+background:rgba(255,255,255,0.05);
+padding:12px;
+border-radius:18px;
+margin-bottom:20px;
+box-shadow:0 0 15px #00fff5 inset;
+font-weight:bold;
+}
+
+@keyframes beatGlow{
+0%{transform:scale(1); text-shadow:0 0 10px gold;}
+50%{transform:scale(1.15); text-shadow:0 0 25px gold,0 0 40px #fff;}
+100%{transform:scale(1); text-shadow:0 0 10px gold;}
+}
+
+.stats-strip div:hover{
+animation:beatGlow 0.8s infinite;
+color:gold;
+}
+
+input{padding:12px 15px;border-radius:10px;border:none;background:rgba(255,255,255,0.15);color:white;outline:none;margin-right:10px;}
+input:focus{background:rgba(255,255,255,0.25);box-shadow:0 0 10px #00fff5;}
+button{padding:12px 20px;border:none;border-radius:10px;background: linear-gradient(135deg,#00fff5,#ff00c8);color:white;font-weight:bold;cursor:pointer;}
+button:hover{transform: scale(1.05);box-shadow:0 0 25px #00fff5,0 0 35px #ff00c8;}
+
+h2:hover{color:#00fff5;text-shadow:0 0 15px #00fff5,0 0 25px #ff00c8;transform: scale(1.05);}
+
+table{width:100%;border-collapse:collapse;margin-top:20px;}
+th, td{padding:14px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1);}
+th{color:#00fff5;text-shadow:0 0 10px #00fff5;}
+
+td.user, td.token, td.remaining{cursor:pointer;}
+td.user:hover, td.token:hover, td.remaining:hover{
+color:#ffffaa;
+text-shadow:0 0 10px #fff,0 0 20px #ffffaa,0 0 35px #fff;
+transform: scale(1.05);
+}
+
+.status-active{color:#00ff88;font-weight:bold;text-shadow:0 0 10px #00ff88;}
+.status-expired{color:red;font-weight:bold;text-shadow:0 0 10px red;}
+
+.counter{margin-top:15px;font-size:22px;font-weight:bold;text-shadow:0 0 15px #fff;}
+.counter:hover{color:gold;text-shadow:0 0 25px gold,0 0 45px gold,0 0 70px #fff;}
+
+.progress-container{background:#111;border-radius:12px;overflow:hidden;height:30px;position:relative;margin:20px 0;box-shadow: 0 0 15px #000 inset;}
+.progress-container:hover{box-shadow:0 0 20px #00fff5,0 0 25px #ff00c8 inset;}
+
+#progressBar{height:100%;width:0%;background: linear-gradient(90deg, #00ff88, #ffff00, #ff0044);box-shadow:0 0 15px #00ff88,0 0 25px #ffff00,0 0 35px #ff0044;transition: width 0.5s linear;}
+
+.chart-container{display:flex;justify-content:space-between;gap:20px;margin-top:20px;flex-wrap:wrap;}
+.chart-box{flex:1;min-width:250px;background: rgba(255,255,255,0.05);backdrop-filter: blur(15px);border-radius:20px;padding:20px;box-shadow:0 0 15px #00fff5;height:150px;}
+.chart-box canvas:hover{
+filter: drop-shadow(0 0 10px #00ff88) drop-shadow(0 0 20px #00ff88);
+}
+.chart-box:hover{
+box-shadow:0 0 25px #00fff5,0 0 45px #ffff00 inset;
+}
+
+.glitter{position:absolute;width:4px;height:4px;background:white;border-radius:50%;animation: shimmer 3s infinite alternate;opacity:0.7;}
+@keyframes shimmer{0%{opacity:0.2; transform:scale(0.5);}50%{opacity:1; transform:scale(1.3);}100%{opacity:0.3; transform:scale(0.7);}}
+
+.countdown-alert{color:red;text-shadow:0 0 15px red,0 0 25px #ff4444,0 0 35px #ff0000;font-weight:bold;}
+</style>
+</head>
+<body>
+
+<h2>✨ Login</h2>
+<input type="text" id="username" placeholder="Enter username">
+<button onclick="login()">Login</button>
+
+<div class="glass">
+
+<div class="stats-strip">
+<div id="peakUsers">Peak Users: 0</div>
+<div id="totalLogins">Total Logins: 0</div>
+<div id="systemLoad">System Load: 0%</div>
+</div>
+
+<h2>🔥 Admin Panel - Live Sessions</h2>
+
+<div class="chart-container">
+<div class="chart-box">
+<canvas id="activeUsersChart"></canvas>
+</div>
+<div class="chart-box">
+<canvas id="memoryChart"></canvas>
+</div>
+</div>
+
+<div class="progress-container">
+<div id="progressBar"></div>
+</div>
+
+<div class="counter" id="activeCount">Active Users: 0</div>
+
+<br>
+
+<input type="text" id="logoutToken" placeholder="Enter Session Token">
+<button onclick="logout()">Logout</button>
+
+<table>
+<thead>
+<tr>
+<th>User</th>
+<th>Token</th>
+<th>Remaining Time</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="sessionTable"></tbody>
+</table>
+</div>
+
+<script>
+const maxDataPoints=30;
+const maxSessions=100;
+const activeUsersData=Array(maxDataPoints).fill(0);
+
+let peakUsersValue=0;
+let totalLoginsValue=0;
+
+let activeUsersChart=new Chart(document.getElementById('activeUsersChart'),{
+type:'line',
+data:{
+labels:Array(maxDataPoints).fill(''),
+datasets:[{
+label:'Active Users',
+data:activeUsersData,
+borderColor:'#00ff88',
+backgroundColor:'rgba(0,255,136,0.2)',
+tension:0.4,
+fill:true
+}]
+},
+options:{
+responsive:true,
+animation:{duration:300},
+plugins:{
+legend:{labels:{color:'#00ff88'}}
+},
+scales:{
+y:{
+ticks:{color:'#00ff88',font:{weight:'bold'}},
+grid:{color:'rgba(0,255,136,0.2)'}
+}
+}
+}
+});
+
+let memoryChart=new Chart(document.getElementById('memoryChart'),{
+type:'doughnut',
+data:{
+labels:['Used Memory','Available Memory'],
+datasets:[{
+data:[0,maxSessions],
+backgroundColor:['#ffff00','#333']
+}]
+},
+options:{
+cutout:'70%',
+plugins:{
+legend:{
+position:'bottom',
+labels:{color:'#00fff5',font:{weight:'bold'}}
+}
+}
+}
+});
+
+async function login(){
+const username=document.getElementById("username").value;
+if(!username){alert("Enter username");return;}
+const formData=new FormData();
+formData.append("username",username);
+await fetch("/login",{method:"POST",body:formData});
+totalLoginsValue++;
+document.getElementById("username").value="";
+loadAdminPanel();
+}
+
+async function logout(){
+const token=document.getElementById("logoutToken").value;
+if(!token){alert("Enter token first");return;}
+await fetch("/logout/"+token,{method:"DELETE"});
+document.getElementById("logoutToken").value="";
+loadAdminPanel();
+}
+
+async function loadAdminPanel(){
+const response=await fetch("/all-sessions");
+const data=await response.json();
+const table=document.getElementById("sessionTable");
+table.innerHTML="";
+let activeUsers=0;
+
+Object.entries(data).forEach(([token,session])=>{
+const remaining=session.remaining_seconds;
+const status=session.status;
+if(status==="Active"){activeUsers++;}
+const statusClass=status==="Active"?"status-active":"status-expired";
+const remainingClass = remaining<=100 && status==="Active" ? "countdown-alert" : "";
+const row=document.createElement("tr");
+row.innerHTML=`<td class="user">${session.username}</td><td class="token">${token}</td><td class="remaining ${remainingClass}">${remaining} sec</td><td class="${statusClass}">${status}</td>`;
+table.appendChild(row);
+});
+
+if(activeUsers>peakUsersValue) peakUsersValue=activeUsers;
+
+document.getElementById("activeCount").innerText="Active Users: "+activeUsers;
+document.getElementById("peakUsers").innerText="Peak Users: "+peakUsersValue;
+document.getElementById("totalLogins").innerText="Total Logins: "+totalLoginsValue;
+document.getElementById("systemLoad").innerText="System Load: "+Math.round((activeUsers/maxSessions)*100)+"%";
+
+let percent=Math.min((activeUsers/maxSessions)*100,100);
+document.getElementById("progressBar").style.width=percent+"%";
+
+activeUsersData.push(activeUsers);
+if(activeUsersData.length>maxDataPoints) activeUsersData.shift();
+activeUsersChart.data.datasets[0].data=activeUsersData;
+activeUsersChart.update();
+
+memoryChart.data.datasets[0].data=[activeUsers,Math.max(0,maxSessions-activeUsers)];
+memoryChart.update();
+}
+
+setInterval(loadAdminPanel,1000);
+loadAdminPanel();
+
+for(let i=0;i<50;i++){
+let g=document.createElement("div");
+g.className="glitter";
+g.style.left=Math.random()*100+"%";
+g.style.top=Math.random()*100+"%";
+g.style.animationDuration=(1+Math.random()*4)+"s";
+document.body.appendChild(g);
+}
+</script>
+</body>
+</html>
